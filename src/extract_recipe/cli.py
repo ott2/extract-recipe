@@ -4,7 +4,7 @@ import argparse
 import sys
 from difflib import get_close_matches
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 from extract_recipe.history import (
     filter_by_project,
@@ -15,26 +15,64 @@ from extract_recipe.history import (
 from extract_recipe.formatter import format_json, format_markdown, format_project_list
 
 
-def _find_similar_projects(target: str, all_paths: List[str]) -> List[str]:
-    """Find project paths similar to target for suggestions."""
-    # Try difflib close matches
-    matches = get_close_matches(target, all_paths, n=5, cutoff=0.4)
-    if matches:
-        return matches
-    # Fallback: substring match on the last path component
-    target_name = Path(target).name.lower()
-    return [p for p in all_paths if target_name in p.lower()][:5]
+def _match_projects(
+    target: str, all_paths: List[str], exact: bool
+) -> List[str]:
+    """Find projects matching the target specifier.
+
+    With exact=True, matches projects whose path ends with /target
+    (i.e. the final component(s) match exactly).
+    With exact=False, matches by substring (case-insensitive).
+    """
+    # Full path match always wins
+    if target in all_paths:
+        return [target]
+    if exact:
+        suffix = "/" + target
+        return [p for p in all_paths if p.endswith(suffix) or p == target]
+    else:
+        return [p for p in all_paths if target.lower() in p.lower()]
+
+
+def _fuzzy_suggest(target: str, all_paths: List[str]) -> List[str]:
+    """Suggest projects using fuzzy matching against path suffixes.
+
+    Compares the target against the last N path components of each project,
+    where N is the number of components in the target. This handles typos
+    and transpositions in project names.
+    """
+    n_parts = target.count("/") + 1
+    suffix_to_paths: dict[str, List[str]] = {}
+    for p in all_paths:
+        parts = p.split("/")
+        suffix = "/".join(parts[-n_parts:])
+        suffix_to_paths.setdefault(suffix, []).append(p)
+    close = get_close_matches(target, suffix_to_paths.keys(), n=5, cutoff=0.5)
+    result: List[str] = []
+    for s in close:
+        result.extend(suffix_to_paths[s])
+    return result
+
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="extract-recipe",
         description="Extract prompt recipes from Claude Code history",
+        epilog=(
+            "examples:\n"
+            "  extract-recipe --list                  list all projects\n"
+            "  extract-recipe myproject               match by substring\n"
+            "  extract-recipe -e comparison           exact final component (not comparison2)\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
         "project",
         nargs="?",
-        help="Project path to extract recipe for",
+        help="Project path, substring, or path suffix to match. "
+        "Use / to disambiguate: 'foo/bar' matches only projects "
+        "whose path ends with that suffix",
     )
     parser.add_argument(
         "--claude-dir",
@@ -53,6 +91,12 @@ def main() -> None:
         "--list",
         action="store_true",
         help="List all projects with prompt/session counts",
+    )
+    parser.add_argument(
+        "-e", "--exact",
+        action="store_true",
+        help="Match by exact final path component(s) instead of substring "
+        "(e.g. -e comparison matches .../comparison but not .../comparison2)",
     )
     parser.add_argument(
         "-o",
@@ -83,27 +127,46 @@ def main() -> None:
     if args.project is None:
         parser.error("please provide a project path or use --list")
 
-    # Filter by project
-    filtered = filter_by_project(entries, args.project)
-    if not filtered:
-        all_paths = sorted(set(e.project for e in entries))
-        similar = _find_similar_projects(args.project, all_paths)
+    # Resolve project specifier
+    all_paths = sorted(set(e.project for e in entries))
+    matches = _match_projects(args.project, all_paths, args.exact)
+
+    if len(matches) == 1:
+        project = matches[0]
+    elif len(matches) > 1:
         print(
-            f"Error: No prompts found for project: {args.project}",
+            f"Multiple projects match '{args.project}', "
+            "please specify the path or an identifying substring:",
             file=sys.stderr,
         )
-        if similar:
-            print("\nDid you mean one of these?", file=sys.stderr)
-            for p in similar:
+        for p in matches:
+            print(f"  {p}", file=sys.stderr)
+        sys.exit(1)
+    else:
+        suggestions = _fuzzy_suggest(args.project, all_paths)
+        if suggestions:
+            print(
+                f"No projects match '{args.project}'. "
+                "Similar projects:",
+                file=sys.stderr,
+            )
+            for p in suggestions:
                 print(f"  {p}", file=sys.stderr)
+        else:
+            print(
+                f"No projects match '{args.project}'. "
+                "Run extract-recipe --list to see available projects.",
+                file=sys.stderr,
+            )
         sys.exit(1)
 
+    filtered = filter_by_project(entries, project)
     sessions = group_by_session(filtered)
 
     if args.output_format == "json":
-        output = format_json(args.project, sessions, paste_cache_dir)
+        output = format_json(project, sessions, paste_cache_dir)
     else:
-        output = format_markdown(args.project, sessions, paste_cache_dir)
+        output = format_markdown(project, sessions, paste_cache_dir)
 
     _write_output(output, args.o)
 
