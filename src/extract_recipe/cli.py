@@ -13,7 +13,12 @@ from extract_recipe.history import (
     list_projects,
     load_history,
 )
-from extract_recipe.boilerplate import should_skip, strip_boilerplate
+from extract_recipe.boilerplate import (
+    init as init_config,
+    init_user_config,
+    should_skip,
+    strip_boilerplate,
+)
 from extract_recipe.redact import redact
 from extract_recipe.formatter import (
     format_all_json,
@@ -127,12 +132,35 @@ def main() -> None:
         help="Preserve raw prompt text (don't strip system-generated boilerplate)",
     )
     parser.add_argument(
+        "--config",
+        type=Path,
+        metavar="FILE",
+        help="Pattern config file (default: ~/.config/extract-recipe/patterns.conf)",
+    )
+    parser.add_argument(
+        "--init-config",
+        action="store_true",
+        help="Copy default pattern config to ~/.config/extract-recipe/patterns.conf for editing",
+    )
+    parser.add_argument(
         "-o",
         metavar="FILE",
         help="Write output to file instead of stdout",
     )
 
     args = parser.parse_args()
+
+    if args.init_config:
+        try:
+            dest = init_user_config(args.config)
+        except FileExistsError as e:
+            print(f"Config already exists: {e}", file=sys.stderr)
+            sys.exit(1)
+        print(f"Created {dest}", file=sys.stderr)
+        return
+
+    # Load pattern config (user config replaces package defaults)
+    init_config(args.config)
 
     # Load history
     try:

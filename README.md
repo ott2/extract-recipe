@@ -54,6 +54,12 @@ extract-recipe --format json -o recipe.json ndthtf
 # Browse with rendered markdown using glow
 extract-recipe ndthtf | glow -p
 
+# Copy default config for editing
+extract-recipe --init-config
+
+# Use custom pattern config
+extract-recipe --config my-patterns.conf -r myproject
+
 # Use a custom Claude config directory
 extract-recipe --claude-dir /other/path --list
 ```
@@ -72,7 +78,16 @@ The `project` argument is matched flexibly:
 
 By default, system-generated lines injected by AI coding tools are stripped from prompts. These are not user-authored content — for example, Claude Code appends transcript file references to plan-mode prompts in `history.jsonl`.
 
-Detection uses structural patterns (e.g. paths matching `.claude/projects/.../*.jsonl`) rather than exact English strings, so it survives rewording across tool versions. Patterns are defined in `src/extract_recipe/boilerplate.py` and can be extended for other tools (Codex, Antigravity, etc.).
+Detection uses regex patterns defined in `boilerplate.conf` (shipped with the package). The configuration has four sections:
+
+- **`[strip]`** — regexes removed from prompt text (e.g. `.claude/projects/.../*.jsonl` paths)
+- **`[skip]`** — prompts matching these are omitted entirely (e.g. `/config`, `/login`)
+- **`[plan]`** — prompts matching these are collapsed to a title summary
+- **`[redact]`** — `pattern = replacement` pairs applied when `-r` is used (e.g. home paths → `~`, API keys → `[REDACTED]`)
+
+Processing order: skip → strip → plan → redact.
+
+If a user config exists at `~/.config/extract-recipe/patterns.conf`, it replaces the package defaults entirely. Use `--init-config` to copy the defaults there for editing. Use `--config FILE` to load from a different path. Patterns use Python `re` syntax.
 
 Use `--raw` to preserve the verbatim recorded text. `--raw` and `--redact` are independent: `--raw --redact` keeps boilerplate but redacts sensitive content within it.
 
@@ -81,7 +96,7 @@ Developed against Claude Code 2.1.45.
 ## CLI Reference
 
 ```
-extract-recipe [--claude-dir DIR] [--format {markdown,json}] [--list] [-a] [-e] [-r] [-R] [-o FILE] [project]
+extract-recipe [--claude-dir DIR] [--format {markdown,json}] [--list] [-a] [-e] [-r] [-R] [--config FILE] [--init-config] [-o FILE] [project]
 ```
 
 | Flag | Description |
@@ -92,6 +107,8 @@ extract-recipe [--claude-dir DIR] [--format {markdown,json}] [--list] [-a] [-e] 
 | `-e, --exact` | Match by exact final path component(s) instead of substring |
 | `-r, --redact` | Redact sensitive content (home paths, API keys) from output |
 | `-R, --raw` | Preserve raw prompt text (don't strip system-generated boilerplate) |
+| `--config FILE` | Pattern config file (default: `~/.config/extract-recipe/patterns.conf`) |
+| `--init-config` | Copy default patterns to user config location for editing |
 | `--format` | Output format: `markdown` (default) or `json` |
 | `-o FILE` | Write output to file instead of stdout |
 | `--claude-dir` | Claude config directory (default: `~/.claude`) |
