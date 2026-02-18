@@ -74,9 +74,12 @@ def format_markdown(
     lines: List[str] = []
     lines.append(f"# Recipe: {project}\n")
 
+    display_session = 0
+
     for si, session in enumerate(sessions):
+        display_session += 1
         if redact:
-            lines.append(f"## Session {si + 1}\n")
+            lines.append(f"## Session {display_session}\n")
         else:
             lines.append(f"## {_session_label(session, si)}\n")
 
@@ -85,17 +88,25 @@ def format_markdown(
             cb = _context_break(entry)
             if cb is not None:
                 command, comment = cb
-                if comment:
-                    lines.append(f"*\u2014 Context {command}ed: {comment} \u2014*\n")
+                if redact:
+                    display_session += 1
+                    prompt_num = 0
+                    if comment:
+                        lines.append(f"## Session {display_session} (context {command}ed: {comment})\n")
+                    else:
+                        lines.append(f"## Session {display_session} (context {command}ed)\n")
                 else:
-                    lines.append(f"*\u2014 Context {command}ed \u2014*\n")
+                    if comment:
+                        lines.append(f"*\u2014 Context {command}ed: {comment} \u2014*\n")
+                    else:
+                        lines.append(f"*\u2014 Context {command}ed \u2014*\n")
                 continue
 
             prompt_num += 1
             title = _plan_title(entry)
             if title is not None and not raw:
                 if redact:
-                    lines.append(f"### Prompt {si + 1}.{prompt_num}\n")
+                    lines.append(f"### Prompt {display_session}.{prompt_num}\n")
                 else:
                     date_str = _format_timestamp(entry.timestamp, raw=raw)
                     lines.append(f"### {date_str}\n")
@@ -103,7 +114,7 @@ def format_markdown(
                 continue
 
             if redact:
-                lines.append(f"### Prompt {si + 1}.{prompt_num}\n")
+                lines.append(f"### Prompt {display_session}.{prompt_num}\n")
             else:
                 date_str = _format_timestamp(entry.timestamp, raw=raw)
                 lines.append(f"### {date_str}\n")
@@ -126,9 +137,12 @@ def _project_json(
         "project": project,
         "sessions": [],
     }
+    display_session = 0
+
     for si, session in enumerate(sessions):
+        display_session += 1
         session_data: dict = {
-            "session_id": (si + 1) if redact else session.session_id,
+            "session_id": display_session if redact else session.session_id,
             "prompts": [],
         }
         prompt_num = 0
@@ -136,17 +150,28 @@ def _project_json(
             cb = _context_break(entry)
             if cb is not None:
                 command, comment = cb
-                item: dict = {
-                    "type": "context_break",
-                    "command": command,
-                }
-                if not redact:
-                    item["date"] = _format_timestamp(entry.timestamp)
-                if raw:
-                    item["timestamp_ms"] = entry.timestamp
-                if comment:
-                    item["comment"] = comment
-                session_data["prompts"].append(item)
+                if redact:
+                    data["sessions"].append(session_data)
+                    display_session += 1
+                    prompt_num = 0
+                    session_data = {
+                        "session_id": display_session,
+                        "context_break": command,
+                        "prompts": [],
+                    }
+                    if comment:
+                        session_data["context_break_comment"] = comment
+                else:
+                    item: dict = {
+                        "type": "context_break",
+                        "command": command,
+                        "date": _format_timestamp(entry.timestamp),
+                    }
+                    if raw:
+                        item["timestamp_ms"] = entry.timestamp
+                    if comment:
+                        item["comment"] = comment
+                    session_data["prompts"].append(item)
                 continue
 
             prompt_num += 1
