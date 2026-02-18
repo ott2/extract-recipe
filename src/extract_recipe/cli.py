@@ -235,6 +235,11 @@ def main() -> None:
     if args.project is None:
         parser.error("please provide a project path, -a, or --list")
 
+    # Resolve relative paths (e.g. ".") to absolute before matching
+    candidate = Path(args.project)
+    if candidate.exists():
+        args.project = str(candidate.resolve())
+
     # Resolve project specifier
     all_paths = sorted(set(e.project for e in entries))
     matches = _match_projects(args.project, all_paths, args.exact)

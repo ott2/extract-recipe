@@ -4,12 +4,14 @@ Extract the sequence of prompts ("recipes") used to build artifacts with Claude 
 
 Reads prompt history from `~/.claude/history.jsonl` and resolves pasted content references from `~/.claude/paste-cache/`.
 
+Developed with Claude Code 2.1.45 using mostly Claude Opus 4.6, for Claude Code 2.x format history.
+
 ## Installation
 
 Requires Python 3.9+. No external dependencies.
 
 ```bash
-cd /Users/as456/projects/claudecode/recipe-extraction
+cd recipe-extraction
 
 # Create and activate a virtual environment
 /usr/bin/python3 -m venv .venv
@@ -29,12 +31,15 @@ pip install -e .
 # List all projects with prompt and session counts
 extract-recipe --list
 
+# Save a recipe for sharing (redact sensitive paths/keys, write to file)
+extract-recipe -r . -o recipe.md
+
 # Extract recipe by substring (matches if unique)
-extract-recipe ndthtf
+extract-recipe foo
 
 # Use path components to disambiguate similar names
-extract-recipe rewriting/comparison    # substring: won't match comparison2
-extract-recipe -e comparison           # exact final component: won't match comparison2
+extract-recipe foo/bar      # substring: won't match foo2/bar
+extract-recipe -e bar       # exact final component: won't match bar2
 
 # Full path always works
 extract-recipe /path/to/project
@@ -49,10 +54,10 @@ extract-recipe -r myproject
 extract-recipe --raw myproject
 
 # Extract as JSON to a file
-extract-recipe --format json -o recipe.json ndthtf
+extract-recipe --format json -o recipe.json myproject
 
 # Browse with rendered markdown using glow
-extract-recipe ndthtf | glow -p
+extract-recipe myproject | glow -p
 
 # Check for potential names/identifiers before sharing
 extract-recipe --audit myproject
@@ -72,10 +77,9 @@ extract-recipe --claude-dir /other/path --list
 The `project` argument is matched flexibly:
 
 1. **Full path** — exact match, always works
-2. **Substring** — `ndthtf` matches `.../projects/ndthtf`; if multiple projects contain the substring, all matches are listed so you can refine
-3. **Path suffix** — use `/` to narrow: `rewriting/comparison` matches `.../rewriting/comparison` but not `.../rewriting/comparison2`
-4. **Exact component** (`-e`) — matches only projects whose final path component(s) are exactly the argument: `-e comparison` matches `.../comparison` but not `.../comparison2`
-5. **Fuzzy suggestions** — if nothing matches, similar project names are suggested (handles typos)
+2. **Substring** — case-insensitive substring match against the full project path. `myproject` matches `.../projects/myproject`. Including `/` in the argument naturally narrows results by requiring component boundaries — e.g. `foo/bar` won't match `.../foo2/bar`. If multiple projects match, all are listed so you can refine.
+3. **Exact component** (`-e`) — matches only projects whose final path component(s) are exactly the argument: `-e bar` matches `.../bar` but not `.../bar2`
+4. **Fuzzy suggestions** — if nothing matches, similar project names are suggested (handles typos)
 
 ## Boilerplate Stripping
 
@@ -100,8 +104,6 @@ Use `--raw` to preserve the verbatim recorded text. `--raw` and `--redact` are i
 `--redact` applies pattern-based substitutions for common categories of sensitive content: home directory paths, API keys (AWS, GitHub, Anthropic, OpenAI, Google), UUIDs, and `/tmp` paths. Timestamps are replaced with sequential numbering (Session 1, Prompt 1.1, etc.).
 
 **Redaction is not exhaustive.** It catches known patterns but cannot detect all sensitive content — names, project details, URLs, and other identifying information in your prompts are not automatically redacted. Use `--audit` to review your prompts for proper nouns and other potentially sensitive words before sharing, and consider manual review or additional tools for thorough anonymisation.
-
-Developed against Claude Code 2.1.45.
 
 ## CLI Reference
 
