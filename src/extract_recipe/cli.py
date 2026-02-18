@@ -16,6 +16,7 @@ from extract_recipe.history import (
 from extract_recipe.boilerplate import (
     init as init_config,
     init_user_config,
+    redact_patterns,
     should_skip,
     strip_boilerplate,
 )
@@ -167,6 +168,13 @@ def main() -> None:
 
     # Load pattern config (user config replaces package defaults)
     init_config(args.config)
+
+    if args.redact and not redact_patterns():
+        print(
+            "Warning: --redact specified but no [redact] patterns are loaded. "
+            "Output will not be redacted. Check your config file.",
+            file=sys.stderr,
+        )
 
     # Load history
     try:
