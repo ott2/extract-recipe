@@ -6,6 +6,8 @@ Reads prompt history from `~/.claude/history.jsonl` and resolves pasted content 
 
 Developed with Claude Code 2.1.45 using mostly Claude Opus 4.6, for Claude Code 2.x format history.
 
+The prompts used to develop this tool are in [recipe.md](recipe.md). Run `make recipe` to regenerate it.
+
 ## Installation
 
 Requires Python 3.9+. No external dependencies.

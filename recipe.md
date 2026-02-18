@@ -421,3 +421,13 @@ Maybe specify when redaction was used, `Recipe (redacted): ` in this case?
 ### Prompt 5.14
 
 Please add the makefile and `recipe.md` then commit.
+
+### Prompt 5.15
+
+We need to mention that `make recipe` can be used to make the recipe for this repo and that the recipe is in `recipe.md` (linked so it becomes available to be clicked on github).
+
+## Session 6
+
+### Prompt 6.1
+
+Please now do that, and commit.
