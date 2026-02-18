@@ -32,7 +32,7 @@ pip install -e .
 extract-recipe --list
 
 # Save a recipe for sharing (redact sensitive paths/keys, write to file)
-extract-recipe -r . -o recipe.md
+extract-recipe -r -t "My Project" . -o recipe.md
 
 # Extract recipe by substring (matches if unique)
 extract-recipe foo
@@ -108,7 +108,7 @@ Use `--raw` to preserve the verbatim recorded text. `--raw` and `--redact` are i
 ## CLI Reference
 
 ```
-extract-recipe [--claude-dir DIR] [--format {markdown,json}] [--list] [--audit] [-a] [-e] [-r] [-R] [--config FILE] [--init-config] [-o FILE] [project]
+extract-recipe [--claude-dir DIR] [--format {markdown,json}] [--list] [--audit] [-a] [-e] [-r] [-R] [-t TITLE] [--config FILE] [--init-config] [-o FILE] [project]
 ```
 
 | Flag | Description |
@@ -119,6 +119,7 @@ extract-recipe [--claude-dir DIR] [--format {markdown,json}] [--list] [--audit] 
 | `-e, --exact` | Match by exact final path component(s) instead of substring |
 | `--audit` | List potential proper nouns in prompts (for manual review before sharing) |
 | `-r, --redact` | Redact known sensitive patterns (home paths, API keys); not exhaustive |
+| `-t, --title TITLE` | Override the project name in the output header (default: project path) |
 | `-R, --raw` | Preserve raw prompt text (don't strip system-generated boilerplate) |
 | `--config FILE` | Pattern config file (default: `~/.config/extract-recipe/patterns.conf`) |
 | `--init-config` | Copy default patterns to user config location for editing |

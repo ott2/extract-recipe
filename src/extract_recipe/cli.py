@@ -150,6 +150,12 @@ def main() -> None:
         help="Copy default pattern config to ~/.config/extract-recipe/patterns.conf for editing",
     )
     parser.add_argument(
+        "-t", "--title",
+        metavar="TITLE",
+        help="Override the project name in the output header "
+        "(default: project path, which may leak sensitive info)",
+    )
+    parser.add_argument(
         "-o",
         metavar="FILE",
         help="Write output to file instead of stdout",
@@ -225,7 +231,7 @@ def main() -> None:
             parts = []
             for p in all_paths:
                 sessions = group_by_session(filter_by_project(entries, p))
-                parts.append(format_markdown(p, sessions, paste_cache_dir, raw=args.raw, redact=args.redact))
+                parts.append(format_markdown(p, sessions, paste_cache_dir, raw=args.raw, redact=args.redact, title=args.title))
             output = "\n".join(parts)
         if args.redact:
             output = redact(output)
@@ -277,9 +283,9 @@ def main() -> None:
     sessions = group_by_session(filtered)
 
     if args.output_format == "json":
-        output = format_json(project, sessions, paste_cache_dir, raw=args.raw, redact=args.redact)
+        output = format_json(project, sessions, paste_cache_dir, raw=args.raw, redact=args.redact, title=args.title)
     else:
-        output = format_markdown(project, sessions, paste_cache_dir, raw=args.raw, redact=args.redact)
+        output = format_markdown(project, sessions, paste_cache_dir, raw=args.raw, redact=args.redact, title=args.title)
 
     if args.redact:
         output = redact(output)

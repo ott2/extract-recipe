@@ -69,10 +69,12 @@ def format_markdown(
     paste_cache_dir: Path,
     raw: bool = False,
     redact: bool = False,
+    title: Optional[str] = None,
 ) -> str:
     """Format sessions as a markdown document."""
     lines: List[str] = []
-    lines.append(f"# Recipe: {project}\n")
+    prefix = "Recipe (redacted)" if redact else "Recipe"
+    lines.append(f"# {title}\n" if title else f"# {prefix}: {project}\n")
 
     display_session = 0
 
@@ -131,10 +133,11 @@ def _project_json(
     paste_cache_dir: Path,
     raw: bool = False,
     redact: bool = False,
+    title: Optional[str] = None,
 ) -> dict:
     """Build the JSON-serialisable dict for one project."""
     data = {
-        "project": project,
+        "project": title or project,
         "sessions": [],
     }
     display_session = 0
@@ -207,10 +210,11 @@ def format_json(
     paste_cache_dir: Path,
     raw: bool = False,
     redact: bool = False,
+    title: Optional[str] = None,
 ) -> str:
     """Format sessions as structured JSON."""
     return json.dumps(
-        _project_json(project, sessions, paste_cache_dir, raw=raw, redact=redact),
+        _project_json(project, sessions, paste_cache_dir, raw=raw, redact=redact, title=title),
         indent=2, ensure_ascii=False,
     )
 
