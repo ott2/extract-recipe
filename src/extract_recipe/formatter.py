@@ -67,13 +67,19 @@ def format_markdown(
     sessions: List[Session],
     paste_cache_dir: Path,
     raw: bool = False,
+    redact: bool = False,
 ) -> str:
     """Format sessions as a markdown document."""
     lines: List[str] = []
     lines.append(f"# Recipe: {project}\n")
 
-    for i, session in enumerate(sessions):
-        lines.append(f"## {_session_label(session, i)}\n")
+    for si, session in enumerate(sessions):
+        if redact:
+            lines.append(f"## Session {si + 1}\n")
+        else:
+            lines.append(f"## {_session_label(session, si)}\n")
+
+        prompt_num = 0
         for entry in session.prompts:
             cb = _context_break(entry)
             if cb is not None:
@@ -84,15 +90,22 @@ def format_markdown(
                     lines.append(f"*\u2014 Context {command}ed \u2014*\n")
                 continue
 
+            prompt_num += 1
             title = _plan_title(entry)
             if title is not None and not raw:
-                date_str = _format_timestamp(entry.timestamp, raw=raw)
-                lines.append(f"### {date_str}\n")
+                if redact:
+                    lines.append(f"### Prompt {si + 1}.{prompt_num}\n")
+                else:
+                    date_str = _format_timestamp(entry.timestamp, raw=raw)
+                    lines.append(f"### {date_str}\n")
                 lines.append(f"*\u2014 Plan: {title} \u2014*\n")
                 continue
 
-            date_str = _format_timestamp(entry.timestamp, raw=raw)
-            lines.append(f"### {date_str}\n")
+            if redact:
+                lines.append(f"### Prompt {si + 1}.{prompt_num}\n")
+            else:
+                date_str = _format_timestamp(entry.timestamp, raw=raw)
+                lines.append(f"### {date_str}\n")
             resolved = resolve_pastes(entry, paste_cache_dir)
             lines.append(resolved)
             lines.append("")
@@ -105,17 +118,19 @@ def _project_json(
     sessions: List[Session],
     paste_cache_dir: Path,
     raw: bool = False,
+    redact: bool = False,
 ) -> dict:
     """Build the JSON-serialisable dict for one project."""
     data = {
         "project": project,
         "sessions": [],
     }
-    for session in sessions:
-        session_data = {
-            "session_id": session.session_id,
+    for si, session in enumerate(sessions):
+        session_data: dict = {
+            "session_id": (si + 1) if redact else session.session_id,
             "prompts": [],
         }
+        prompt_num = 0
         for entry in session.prompts:
             cb = _context_break(entry)
             if cb is not None:
@@ -123,8 +138,9 @@ def _project_json(
                 item: dict = {
                     "type": "context_break",
                     "command": command,
-                    "date": _format_timestamp(entry.timestamp),
                 }
+                if not redact:
+                    item["date"] = _format_timestamp(entry.timestamp)
                 if raw:
                     item["timestamp_ms"] = entry.timestamp
                 if comment:
@@ -132,23 +148,26 @@ def _project_json(
                 session_data["prompts"].append(item)
                 continue
 
+            prompt_num += 1
             title = _plan_title(entry)
             if title is not None and not raw:
                 item = {
                     "type": "plan",
                     "title": title,
-                    "date": _format_timestamp(entry.timestamp),
                 }
+                if not redact:
+                    item["date"] = _format_timestamp(entry.timestamp)
                 session_data["prompts"].append(item)
                 continue
 
             resolved = resolve_pastes(entry, paste_cache_dir)
             item = {
                 "type": "prompt",
-                "date": _format_timestamp(entry.timestamp),
                 "display_raw": entry.display,
                 "display_resolved": resolved,
             }
+            if not redact:
+                item["date"] = _format_timestamp(entry.timestamp)
             if raw:
                 item["timestamp_ms"] = entry.timestamp
             session_data["prompts"].append(item)
@@ -161,10 +180,11 @@ def format_json(
     sessions: List[Session],
     paste_cache_dir: Path,
     raw: bool = False,
+    redact: bool = False,
 ) -> str:
     """Format sessions as structured JSON."""
     return json.dumps(
-        _project_json(project, sessions, paste_cache_dir, raw=raw),
+        _project_json(project, sessions, paste_cache_dir, raw=raw, redact=redact),
         indent=2, ensure_ascii=False,
     )
 
@@ -173,10 +193,11 @@ def format_all_json(
     projects: List[Tuple[str, List[Session]]],
     paste_cache_dir: Path,
     raw: bool = False,
+    redact: bool = False,
 ) -> str:
     """Format all projects as a JSON array."""
     data = [
-        _project_json(project, sessions, paste_cache_dir, raw=raw)
+        _project_json(project, sessions, paste_cache_dir, raw=raw, redact=redact)
         for project, sessions in projects
     ]
     return json.dumps(data, indent=2, ensure_ascii=False)

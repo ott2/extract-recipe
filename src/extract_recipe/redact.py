@@ -1,7 +1,8 @@
 """Redact sensitive content from recipe output.
 
 Simple pattern→replacement pairs are loaded from boilerplate.conf [redact].
-Session ID handling (stateful sequential numbering) is implemented here.
+UUIDs embedded in prompt text are replaced with [UUID].
+Session IDs and timestamps are handled at format time (formatter.py).
 """
 
 from __future__ import annotations
@@ -10,53 +11,19 @@ import re
 
 from extract_recipe.boilerplate import redact_patterns
 
-# Session IDs in their known output contexts (headings / JSON keys)
-_MD_SESSION_RE = re.compile(r"(## Session )([0-9a-f]{8})")
-_JSON_SESSION_RE = re.compile(r'("session_id": ")([0-9a-f]{8}(?:-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?)"')
-
 # Bare UUIDs anywhere in text (e.g. transcript paths inside prompts)
 _UUID_RE = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
-
-
-def _redact_session_ids(text: str) -> str:
-    """Replace session IDs with sequential numbers (Session 1, Session 2, ...).
-
-    Also replaces bare UUIDs in prompt text with [SESSION].
-    """
-    id_map: dict[str, int] = {}
-
-    def _next_id(hex8: str) -> str:
-        if hex8 not in id_map:
-            id_map[hex8] = len(id_map) + 1
-        return str(id_map[hex8])
-
-    def _replace_md(m: re.Match) -> str:
-        return m.group(1) + _next_id(m.group(2))
-
-    def _replace_json(m: re.Match) -> str:
-        key = m.group(2)[:8]
-        return m.group(1) + _next_id(key) + '"'
-
-    # First pass: replace session IDs in structured positions (headings/JSON keys)
-    text = _MD_SESSION_RE.sub(_replace_md, text)
-    text = _JSON_SESSION_RE.sub(_replace_json, text)
-
-    # Second pass: replace remaining bare UUIDs in prompt text
-    text = _UUID_RE.sub("[SESSION]", text)
-    return text
 
 
 def redact(text: str) -> str:
     """Redact sensitive content from text.
 
     - Applies pattern→replacement pairs from [redact] config section
-    - Replaces session IDs with sequential numbers
-    - Replaces bare UUIDs with [SESSION]
+    - Replaces bare UUIDs with [UUID]
     """
-    # Apply configurable pattern→replacement pairs
     for pattern, replacement in redact_patterns():
         text = pattern.sub(replacement, text)
 
-    text = _redact_session_ids(text)
+    text = _UUID_RE.sub("[UUID]", text)
 
     return text

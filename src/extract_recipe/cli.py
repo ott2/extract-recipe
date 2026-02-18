@@ -195,12 +195,12 @@ def main() -> None:
                 (p, group_by_session(filter_by_project(entries, p)))
                 for p in all_paths
             ]
-            output = format_all_json(projects_sessions, paste_cache_dir, raw=args.raw)
+            output = format_all_json(projects_sessions, paste_cache_dir, raw=args.raw, redact=args.redact)
         else:
             parts = []
             for p in all_paths:
                 sessions = group_by_session(filter_by_project(entries, p))
-                parts.append(format_markdown(p, sessions, paste_cache_dir, raw=args.raw))
+                parts.append(format_markdown(p, sessions, paste_cache_dir, raw=args.raw, redact=args.redact))
             output = "\n".join(parts)
         if args.redact:
             output = redact(output)
@@ -247,9 +247,9 @@ def main() -> None:
     sessions = group_by_session(filtered)
 
     if args.output_format == "json":
-        output = format_json(project, sessions, paste_cache_dir, raw=args.raw)
+        output = format_json(project, sessions, paste_cache_dir, raw=args.raw, redact=args.redact)
     else:
-        output = format_markdown(project, sessions, paste_cache_dir, raw=args.raw)
+        output = format_markdown(project, sessions, paste_cache_dir, raw=args.raw, redact=args.redact)
 
     if args.redact:
         output = redact(output)
