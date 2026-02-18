@@ -54,6 +54,9 @@ extract-recipe --format json -o recipe.json ndthtf
 # Browse with rendered markdown using glow
 extract-recipe ndthtf | glow -p
 
+# Check for potential names/identifiers before sharing
+extract-recipe --audit myproject
+
 # Copy default config for editing
 extract-recipe --init-config
 
@@ -84,6 +87,7 @@ Detection uses regex patterns defined in `boilerplate.conf` (shipped with the pa
 - **`[skip]`** — prompts matching these are omitted entirely (e.g. `/config`, `/login`)
 - **`[plan]`** — prompts matching these are collapsed to a title summary
 - **`[redact]`** — `pattern = replacement` pairs applied when `-r` is used (e.g. home paths → `~`, API keys → `[REDACTED]`)
+- **`[audit-stopwords]`** — case-insensitive regexes for common words to filter from `--audit` output (e.g. `add(ed|ing)?`)
 
 Processing order: skip → strip → plan → redact.
 
@@ -91,12 +95,18 @@ If a user config exists at `~/.config/extract-recipe/patterns.conf`, it replaces
 
 Use `--raw` to preserve the verbatim recorded text. `--raw` and `--redact` are independent: `--raw --redact` keeps boilerplate but redacts sensitive content within it.
 
+## Redaction
+
+`--redact` applies pattern-based substitutions for common categories of sensitive content: home directory paths, API keys (AWS, GitHub, Anthropic, OpenAI, Google), UUIDs, and `/tmp` paths. Timestamps are replaced with sequential numbering (Session 1, Prompt 1.1, etc.).
+
+**Redaction is not exhaustive.** It catches known patterns but cannot detect all sensitive content — names, project details, URLs, and other identifying information in your prompts are not automatically redacted. Use `--audit` to review your prompts for proper nouns and other potentially sensitive words before sharing, and consider manual review or additional tools for thorough anonymisation.
+
 Developed against Claude Code 2.1.45.
 
 ## CLI Reference
 
 ```
-extract-recipe [--claude-dir DIR] [--format {markdown,json}] [--list] [-a] [-e] [-r] [-R] [--config FILE] [--init-config] [-o FILE] [project]
+extract-recipe [--claude-dir DIR] [--format {markdown,json}] [--list] [--audit] [-a] [-e] [-r] [-R] [--config FILE] [--init-config] [-o FILE] [project]
 ```
 
 | Flag | Description |
@@ -105,7 +115,8 @@ extract-recipe [--claude-dir DIR] [--format {markdown,json}] [--list] [-a] [-e] 
 | `--list` | List all projects with prompt/session counts |
 | `-a, --all` | Extract recipes for all projects |
 | `-e, --exact` | Match by exact final path component(s) instead of substring |
-| `-r, --redact` | Redact sensitive content (home paths, API keys) from output |
+| `--audit` | List potential proper nouns in prompts (for manual review before sharing) |
+| `-r, --redact` | Redact known sensitive patterns (home paths, API keys); not exhaustive |
 | `-R, --raw` | Preserve raw prompt text (don't strip system-generated boilerplate) |
 | `--config FILE` | Pattern config file (default: `~/.config/extract-recipe/patterns.conf`) |
 | `--init-config` | Copy default patterns to user config location for editing |

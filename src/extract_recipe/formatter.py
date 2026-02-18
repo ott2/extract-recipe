@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import json
 import re
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional, Tuple
 
-from extract_recipe.boilerplate import is_plan
+from extract_recipe.boilerplate import audit_stopwords, is_plan
 from extract_recipe.history import PromptEntry, Session
 from extract_recipe.paste import resolve_pastes
 
@@ -201,6 +202,44 @@ def format_all_json(
         for project, sessions in projects
     ]
     return json.dumps(data, indent=2, ensure_ascii=False)
+
+
+# Capitalized word (starts uppercase, at least 3 chars, not ALL CAPS)
+_CAP_WORD_RE = re.compile(r"\b([A-Z][a-z]{2,})\b")
+
+
+def format_audit(entries: List["PromptEntry"], raw: bool = False) -> str:
+    """Show frequently used capitalized words in prompt text.
+
+    By default, words listed in [audit-stopwords] are filtered out.
+    With raw=True, all capitalized words are shown (useful for seeing
+    which common words tend to be capitalised in your prompts).
+    """
+    stopwords = [] if raw else audit_stopwords()
+    counts: Counter = Counter()
+    for entry in entries:
+        for m in _CAP_WORD_RE.finditer(entry.display):
+            word = m.group(1)
+            if not any(p.fullmatch(word) for p in stopwords):
+                counts[word] += 1
+
+    if not counts:
+        return "No frequently used capitalized words found."
+
+    lines: List[str] = []
+    if raw:
+        lines.append("All frequently used capitalized words in prompts:\n")
+    else:
+        lines.append("Frequently used capitalized words in prompts")
+        lines.append("(filtered by [audit-stopwords]; use --raw to show all):\n")
+    lines.append(f"{'Count':>5}  Word")
+    lines.append(f"{'-----':>5}  ----")
+    for word, count in counts.most_common(50):
+        if count < 2:
+            break
+        lines.append(f"{count:>5}  {word}")
+
+    return "\n".join(lines)
 
 
 def format_project_list(projects: List[Tuple[str, int, int]]) -> str:

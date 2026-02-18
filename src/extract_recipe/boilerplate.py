@@ -20,8 +20,12 @@ from typing import Dict, List, Optional, Tuple
 # Sections where each line is a plain regex
 _PLAIN_SECTIONS = {"strip", "skip", "plan"}
 
+# Sections where each line is a case-insensitive regex
+_ICASE_SECTIONS = {"audit-stopwords"}
+
 # Sections where each line is "pattern = replacement"
 _PAIR_SECTIONS = {"redact"}
+
 
 _DEFAULT_USER_CONFIG = Path.home() / ".config" / "extract-recipe" / "patterns.conf"
 
@@ -47,7 +51,8 @@ def _parse_conf(text: str, sections: Dict, pairs: Dict) -> None:
                 )
             continue
 
-        sections.setdefault(current, []).append(re.compile(line))
+        flags = re.IGNORECASE if current in _ICASE_SECTIONS else 0
+        sections.setdefault(current, []).append(re.compile(line, flags))
 
 
 def _default_conf() -> importlib.resources.abc.Traversable:
@@ -55,9 +60,10 @@ def _default_conf() -> importlib.resources.abc.Traversable:
     return importlib.resources.files("extract_recipe").joinpath("boilerplate.conf")
 
 
-def load_config(
-    user_config: Optional[Path] = None,
-) -> Tuple[Dict[str, List[re.Pattern]], Dict[str, List[Tuple[re.Pattern, str]]]]:
+def load_config(user_config: Optional[Path] = None) -> Tuple[
+    Dict[str, List[re.Pattern]],
+    Dict[str, List[Tuple[re.Pattern, str]]],
+]:
     """Load patterns from user config (if it exists) or package defaults.
 
     Returns (sections, pairs) where:
@@ -125,3 +131,8 @@ def is_plan(display: str) -> bool:
 def redact_patterns() -> List[Tuple[re.Pattern, str]]:
     """Return the list of (pattern, replacement) pairs for redaction."""
     return _pairs.get("redact", [])
+
+
+def audit_stopwords() -> List[re.Pattern]:
+    """Return the list of stopword patterns for audit output."""
+    return _sections.get("audit-stopwords", [])

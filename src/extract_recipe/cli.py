@@ -22,6 +22,7 @@ from extract_recipe.boilerplate import (
 from extract_recipe.redact import redact
 from extract_recipe.formatter import (
     format_all_json,
+    format_audit,
     format_json,
     format_markdown,
     format_project_list,
@@ -122,9 +123,14 @@ def main() -> None:
         "(e.g. -e comparison matches .../comparison but not .../comparison2)",
     )
     parser.add_argument(
+        "--audit",
+        action="store_true",
+        help="List potential proper nouns in prompts (for manual review before sharing)",
+    )
+    parser.add_argument(
         "-r", "--redact",
         action="store_true",
-        help="Redact sensitive content (home paths, API keys) from output",
+        help="Redact known sensitive patterns (home paths, API keys); not exhaustive",
     )
     parser.add_argument(
         "-R", "--raw",
@@ -179,6 +185,17 @@ def main() -> None:
         entries = [e for e in entries if not should_skip(e.display)]
         for e in entries:
             e.display = strip_boilerplate(e.display)
+
+    if args.audit:
+        target_entries = entries
+        if args.project:
+            all_paths = sorted(set(e.project for e in entries))
+            matches = _match_projects(args.project, all_paths, args.exact)
+            if matches:
+                target_entries = [e for e in entries if e.project in matches]
+        output = format_audit(target_entries, raw=args.raw)
+        _write_output(output, args.o)
+        return
 
     if args.list:
         projects = list_projects(entries)
