@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "extract-recipe"
+version = "0.1.0"
+description = "Extract prompt recipes from Claude Code history"
+requires-python = ">=3.9"
+
+[project.scripts]
+extract-recipe = "extract_recipe.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
