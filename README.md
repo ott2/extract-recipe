@@ -42,6 +42,12 @@ extract-recipe /path/to/project
 # Extract all projects at once
 extract-recipe -a
 
+# Redact home paths and API keys before sharing
+extract-recipe -r myproject
+
+# Keep system-generated boilerplate (stripped by default)
+extract-recipe --raw myproject
+
 # Extract as JSON to a file
 extract-recipe --format json -o recipe.json ndthtf
 
@@ -62,10 +68,20 @@ The `project` argument is matched flexibly:
 4. **Exact component** (`-e`) — matches only projects whose final path component(s) are exactly the argument: `-e comparison` matches `.../comparison` but not `.../comparison2`
 5. **Fuzzy suggestions** — if nothing matches, similar project names are suggested (handles typos)
 
+## Boilerplate Stripping
+
+By default, system-generated lines injected by AI coding tools are stripped from prompts. These are not user-authored content — for example, Claude Code appends transcript file references to plan-mode prompts in `history.jsonl`.
+
+Detection uses structural patterns (e.g. paths matching `.claude/projects/.../*.jsonl`) rather than exact English strings, so it survives rewording across tool versions. Patterns are defined in `src/extract_recipe/boilerplate.py` and can be extended for other tools (Codex, Antigravity, etc.).
+
+Use `--raw` to preserve the verbatim recorded text. `--raw` and `--redact` are independent: `--raw --redact` keeps boilerplate but redacts sensitive content within it.
+
+Developed against Claude Code 2.1.45.
+
 ## CLI Reference
 
 ```
-extract-recipe [--claude-dir DIR] [--format {markdown,json}] [--list] [-a] [-e] [-o FILE] [project]
+extract-recipe [--claude-dir DIR] [--format {markdown,json}] [--list] [-a] [-e] [-r] [--raw] [-o FILE] [project]
 ```
 
 | Flag | Description |
@@ -74,6 +90,8 @@ extract-recipe [--claude-dir DIR] [--format {markdown,json}] [--list] [-a] [-e] 
 | `--list` | List all projects with prompt/session counts |
 | `-a, --all` | Extract recipes for all projects |
 | `-e, --exact` | Match by exact final path component(s) instead of substring |
+| `-r, --redact` | Redact sensitive content (home paths, API keys) from output |
+| `--raw` | Preserve raw prompt text (don't strip system-generated boilerplate) |
 | `--format` | Output format: `markdown` (default) or `json` |
 | `-o FILE` | Write output to file instead of stdout |
 | `--claude-dir` | Claude config directory (default: `~/.claude`) |

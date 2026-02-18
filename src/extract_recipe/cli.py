@@ -13,6 +13,8 @@ from extract_recipe.history import (
     list_projects,
     load_history,
 )
+from extract_recipe.boilerplate import should_skip, strip_boilerplate
+from extract_recipe.redact import redact
 from extract_recipe.formatter import (
     format_all_json,
     format_json,
@@ -115,6 +117,16 @@ def main() -> None:
         "(e.g. -e comparison matches .../comparison but not .../comparison2)",
     )
     parser.add_argument(
+        "-r", "--redact",
+        action="store_true",
+        help="Redact sensitive content (home paths, API keys) from output",
+    )
+    parser.add_argument(
+        "--raw",
+        action="store_true",
+        help="Preserve raw prompt text (don't strip system-generated boilerplate)",
+    )
+    parser.add_argument(
         "-o",
         metavar="FILE",
         help="Write output to file instead of stdout",
@@ -134,9 +146,17 @@ def main() -> None:
 
     paste_cache_dir = args.claude_dir / "paste-cache"
 
+    # Filter out housekeeping commands and strip boilerplate (unless --raw)
+    if not args.raw:
+        entries = [e for e in entries if not should_skip(e.display)]
+        for e in entries:
+            e.display = strip_boilerplate(e.display)
+
     if args.list:
         projects = list_projects(entries)
         output = format_project_list(projects)
+        if args.redact:
+            output = redact(output)
         _write_output(output, args.o)
         return
 
@@ -147,13 +167,15 @@ def main() -> None:
                 (p, group_by_session(filter_by_project(entries, p)))
                 for p in all_paths
             ]
-            output = format_all_json(projects_sessions, paste_cache_dir)
+            output = format_all_json(projects_sessions, paste_cache_dir, raw=args.raw)
         else:
             parts = []
             for p in all_paths:
                 sessions = group_by_session(filter_by_project(entries, p))
-                parts.append(format_markdown(p, sessions, paste_cache_dir))
+                parts.append(format_markdown(p, sessions, paste_cache_dir, raw=args.raw))
             output = "\n".join(parts)
+        if args.redact:
+            output = redact(output)
         _write_output(output, args.o)
         return
 
@@ -197,10 +219,12 @@ def main() -> None:
     sessions = group_by_session(filtered)
 
     if args.output_format == "json":
-        output = format_json(project, sessions, paste_cache_dir)
+        output = format_json(project, sessions, paste_cache_dir, raw=args.raw)
     else:
-        output = format_markdown(project, sessions, paste_cache_dir)
+        output = format_markdown(project, sessions, paste_cache_dir, raw=args.raw)
 
+    if args.redact:
+        output = redact(output)
     _write_output(output, args.o)
 
 
