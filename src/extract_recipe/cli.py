@@ -122,7 +122,7 @@ def main() -> None:
         help="Redact sensitive content (home paths, API keys) from output",
     )
     parser.add_argument(
-        "--raw",
+        "-R", "--raw",
         action="store_true",
         help="Preserve raw prompt text (don't strip system-generated boilerplate)",
     )

@@ -81,7 +81,7 @@ Developed against Claude Code 2.1.45.
 ## CLI Reference
 
 ```
-extract-recipe [--claude-dir DIR] [--format {markdown,json}] [--list] [-a] [-e] [-r] [--raw] [-o FILE] [project]
+extract-recipe [--claude-dir DIR] [--format {markdown,json}] [--list] [-a] [-e] [-r] [-R] [-o FILE] [project]
 ```
 
 | Flag | Description |
@@ -91,7 +91,7 @@ extract-recipe [--claude-dir DIR] [--format {markdown,json}] [--list] [-a] [-e] 
 | `-a, --all` | Extract recipes for all projects |
 | `-e, --exact` | Match by exact final path component(s) instead of substring |
 | `-r, --redact` | Redact sensitive content (home paths, API keys) from output |
-| `--raw` | Preserve raw prompt text (don't strip system-generated boilerplate) |
+| `-R, --raw` | Preserve raw prompt text (don't strip system-generated boilerplate) |
 | `--format` | Output format: `markdown` (default) or `json` |
 | `-o FILE` | Write output to file instead of stdout |
 | `--claude-dir` | Claude config directory (default: `~/.claude`) |

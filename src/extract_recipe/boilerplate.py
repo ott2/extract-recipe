@@ -12,46 +12,44 @@ from __future__ import annotations
 
 import importlib.resources
 import re
-from typing import List
+from typing import Dict, List
 
 
-def _load_conf() -> tuple[List[re.Pattern], List[re.Pattern]]:
-    """Load patterns from boilerplate.conf.
-
-    Returns (strip_patterns, skip_patterns).
-    """
+def _load_conf() -> Dict[str, List[re.Pattern]]:
+    """Load patterns from boilerplate.conf, keyed by section name."""
     ref = importlib.resources.files("extract_recipe").joinpath("boilerplate.conf")
     text = ref.read_text(encoding="utf-8")
 
-    strip_patterns: List[re.Pattern] = []
-    skip_patterns: List[re.Pattern] = []
-    target = strip_patterns  # default section
+    sections: Dict[str, List[re.Pattern]] = {}
+    current = "strip"  # default section
 
     for line in text.splitlines():
         line = line.strip()
         if not line or line.startswith("#"):
             continue
-        if line == "[strip]":
-            target = strip_patterns
+        if line.startswith("[") and line.endswith("]"):
+            current = line[1:-1]
             continue
-        if line == "[skip]":
-            target = skip_patterns
-            continue
-        target.append(re.compile(line))
+        sections.setdefault(current, []).append(re.compile(line))
 
-    return strip_patterns, skip_patterns
+    return sections
 
 
-_STRIP_PATTERNS, _SKIP_PATTERNS = _load_conf()
+_SECTIONS = _load_conf()
 
 
 def strip_boilerplate(text: str) -> str:
     """Remove known system-generated boilerplate from within text."""
-    for pattern in _STRIP_PATTERNS:
+    for pattern in _SECTIONS.get("strip", []):
         text = pattern.sub("", text)
     return text
 
 
 def should_skip(display: str) -> bool:
     """Return True if a prompt should be omitted entirely from the recipe."""
-    return any(p.search(display) for p in _SKIP_PATTERNS)
+    return any(p.search(display) for p in _SECTIONS.get("skip", []))
+
+
+def is_plan(display: str) -> bool:
+    """Return True if a prompt is a plan-mode prompt (to be collapsed)."""
+    return any(p.search(display) for p in _SECTIONS.get("plan", []))

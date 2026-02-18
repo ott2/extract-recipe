@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional, Tuple
 
+from extract_recipe.boilerplate import is_plan
 from extract_recipe.history import PromptEntry, Session
 from extract_recipe.paste import resolve_pastes
 
@@ -14,8 +15,7 @@ _CONTEXT_BREAK_RE = re.compile(
     r"^/(clear|compact|compress)\s*(.*?)\s*$", re.DOTALL
 )
 
-# Plan-mode prompts injected by Claude Code
-_PLAN_PREFIX = "Implement the following plan:"
+# First markdown heading in a plan prompt
 _PLAN_TITLE_RE = re.compile(r"^#\s+(.+)$", re.MULTILINE)
 
 
@@ -35,7 +35,7 @@ def _plan_title(entry: PromptEntry) -> Optional[str]:
 
     Returns None for regular prompts.
     """
-    if not entry.display.startswith(_PLAN_PREFIX):
+    if not is_plan(entry.display):
         return None
     m = _PLAN_TITLE_RE.search(entry.display)
     if m:
