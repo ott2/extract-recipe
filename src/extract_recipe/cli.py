@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import signal
 import sys
 from difflib import get_close_matches
 from pathlib import Path
@@ -12,7 +13,12 @@ from extract_recipe.history import (
     list_projects,
     load_history,
 )
-from extract_recipe.formatter import format_json, format_markdown, format_project_list
+from extract_recipe.formatter import (
+    format_all_json,
+    format_json,
+    format_markdown,
+    format_project_list,
+)
 
 
 def _match_projects(
@@ -56,6 +62,9 @@ def _fuzzy_suggest(target: str, all_paths: List[str]) -> List[str]:
 
 
 def main() -> None:
+    # Exit quietly on broken pipe (e.g. piping to head)
+    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+
     parser = argparse.ArgumentParser(
         prog="extract-recipe",
         description="Extract prompt recipes from Claude Code history",
@@ -64,6 +73,7 @@ def main() -> None:
             "  extract-recipe --list                  list all projects\n"
             "  extract-recipe myproject               match by substring\n"
             "  extract-recipe -e comparison           exact final component (not comparison2)\n"
+            "  extract-recipe -a                      extract all projects\n"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -91,6 +101,12 @@ def main() -> None:
         "--list",
         action="store_true",
         help="List all projects with prompt/session counts",
+    )
+    parser.add_argument(
+        "-a", "--all",
+        action="store_true",
+        dest="all_projects",
+        help="Extract recipes for all projects",
     )
     parser.add_argument(
         "-e", "--exact",
@@ -124,8 +140,25 @@ def main() -> None:
         _write_output(output, args.o)
         return
 
+    if args.all_projects:
+        all_paths = sorted(set(e.project for e in entries))
+        if args.output_format == "json":
+            projects_sessions = [
+                (p, group_by_session(filter_by_project(entries, p)))
+                for p in all_paths
+            ]
+            output = format_all_json(projects_sessions, paste_cache_dir)
+        else:
+            parts = []
+            for p in all_paths:
+                sessions = group_by_session(filter_by_project(entries, p))
+                parts.append(format_markdown(p, sessions, paste_cache_dir))
+            output = "\n".join(parts)
+        _write_output(output, args.o)
+        return
+
     if args.project is None:
-        parser.error("please provide a project path or use --list")
+        parser.error("please provide a project path, -a, or --list")
 
     # Resolve project specifier
     all_paths = sorted(set(e.project for e in entries))

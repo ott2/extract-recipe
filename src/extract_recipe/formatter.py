@@ -45,17 +45,16 @@ def format_markdown(
     return "\n".join(lines)
 
 
-def format_json(
+def _project_json(
     project: str,
     sessions: List[Session],
     paste_cache_dir: Path,
-) -> str:
-    """Format sessions as structured JSON."""
+) -> dict:
+    """Build the JSON-serialisable dict for one project."""
     data = {
         "project": project,
         "sessions": [],
     }
-
     prompt_num = 0
     for session in sessions:
         session_data = {
@@ -73,7 +72,30 @@ def format_json(
                 "display_resolved": resolved,
             })
         data["sessions"].append(session_data)
+    return data
 
+
+def format_json(
+    project: str,
+    sessions: List[Session],
+    paste_cache_dir: Path,
+) -> str:
+    """Format sessions as structured JSON."""
+    return json.dumps(
+        _project_json(project, sessions, paste_cache_dir),
+        indent=2, ensure_ascii=False,
+    )
+
+
+def format_all_json(
+    projects: List[Tuple[str, List[Session]]],
+    paste_cache_dir: Path,
+) -> str:
+    """Format all projects as a JSON array."""
+    data = [
+        _project_json(project, sessions, paste_cache_dir)
+        for project, sessions in projects
+    ]
     return json.dumps(data, indent=2, ensure_ascii=False)
 
 

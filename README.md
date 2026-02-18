@@ -39,8 +39,14 @@ extract-recipe -e comparison           # exact final component: won't match comp
 # Full path always works
 extract-recipe /path/to/project
 
+# Extract all projects at once
+extract-recipe -a
+
 # Extract as JSON to a file
 extract-recipe --format json -o recipe.json ndthtf
+
+# Browse with rendered markdown using glow
+extract-recipe ndthtf | glow -p
 
 # Use a custom Claude config directory
 extract-recipe --claude-dir /other/path --list
@@ -59,13 +65,14 @@ The `project` argument is matched flexibly:
 ## CLI Reference
 
 ```
-extract-recipe [--claude-dir DIR] [--format {markdown,json}] [--list] [-e] [-o FILE] [project]
+extract-recipe [--claude-dir DIR] [--format {markdown,json}] [--list] [-a] [-e] [-o FILE] [project]
 ```
 
 | Flag | Description |
 |------|-------------|
 | `project` | Project path, substring, or path suffix to match |
 | `--list` | List all projects with prompt/session counts |
+| `-a, --all` | Extract recipes for all projects |
 | `-e, --exact` | Match by exact final path component(s) instead of substring |
 | `--format` | Output format: `markdown` (default) or `json` |
 | `-o FILE` | Write output to file instead of stdout |
