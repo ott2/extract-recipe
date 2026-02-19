@@ -431,3 +431,43 @@ We need to mention that `make recipe` can be used to make the recipe for this re
 ### Prompt 6.1
 
 Please now do that, and commit.
+
+## Session 7
+
+### Prompt 7.1
+
+We have tested our module with Python 3.9.6; please test a fresh venv with python3.14 as well.
+
+## Session 8
+
+### Prompt 8.1
+
+Since the 3.14 test will be removed please use install not install -e
+
+### Prompt 8.2
+
+I'm told that some versions of Claude Code do not assign unique hashes to each line in the history. Do we rely on that, and if so, is that necessary?
+
+### Prompt 8.3
+
+In the history, are there any indications of a user interrupt?
+
+### Prompt 8.4
+
+Please make the pastedContents handling more robust. The (vague) bug report indicated that making the hashes optional stopped the problems; I suspect an older file format contained pastedContents with actual values and without a hash.
+
+### Prompt 8.5
+
+Are there any other places we could fall back gracefully when the input has different structure?
+
+### Prompt 8.6
+
+We should certainly prefer skipping bad lines instead of crashing.
+
+### Prompt 8.7
+
+Please commit.
+
+### Prompt 8.8
+
+Please do `make recipe` then commit.

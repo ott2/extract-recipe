@@ -19,8 +19,8 @@ def resolve_pastes(entry: PromptEntry, paste_cache_dir: Path) -> str:
     def replace_match(m: re.Match) -> str:
         paste_id = m.group(1)
         ref = entry.pasted_contents.get(paste_id)
-        if ref is None:
-            return m.group(0)  # no ref info, leave as-is
+        if ref is None or ref.content_hash is None:
+            return m.group(0)  # no ref info or no hash, leave as-is
 
         cache_file = paste_cache_dir / f"{ref.content_hash}.txt"
         if cache_file.exists():

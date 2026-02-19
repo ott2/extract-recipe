@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -8,9 +9,9 @@ from typing import Dict, List, Optional, Tuple
 
 @dataclass
 class PasteRef:
-    id: int
-    type: str
-    content_hash: str
+    id: Optional[int]
+    type: Optional[str]
+    content_hash: Optional[str]
 
 
 @dataclass
@@ -37,21 +38,24 @@ def load_history(claude_dir: Path) -> List[PromptEntry]:
             line = line.strip()
             if not line:
                 continue
-            obj = json.loads(line)
-            pasted = {}
-            for key, val in (obj.get("pastedContents") or {}).items():
-                pasted[key] = PasteRef(
-                    id=val["id"],
-                    type=val["type"],
-                    content_hash=val["contentHash"],
-                )
-            entries.append(PromptEntry(
-                display=obj["display"],
-                pasted_contents=pasted,
-                timestamp=obj["timestamp"],
-                project=obj["project"],
-                session_id=obj.get("sessionId"),
-            ))
+            try:
+                obj = json.loads(line)
+                pasted = {}
+                for key, val in (obj.get("pastedContents") or {}).items():
+                    pasted[key] = PasteRef(
+                        id=val.get("id"),
+                        type=val.get("type"),
+                        content_hash=val.get("contentHash"),
+                    )
+                entries.append(PromptEntry(
+                    display=obj["display"],
+                    pasted_contents=pasted,
+                    timestamp=obj["timestamp"],
+                    project=obj["project"],
+                    session_id=obj.get("sessionId"),
+                ))
+            except (json.JSONDecodeError, KeyError, AttributeError, TypeError) as e:
+                print(f"Warning: skipping malformed history line: {e}", file=sys.stderr)
     entries.sort(key=lambda e: e.timestamp)
     return entries
 
