@@ -471,3 +471,11 @@ Please commit.
 ### Prompt 8.8
 
 Please do `make recipe` then commit.
+
+### Prompt 8.9
+
+Please update the version number. We also seem to have a version number in __init__.py as well as in pyproject.toml is there any reason for that?
+
+### Prompt 8.10
+
+Please `make recipe` then commit.
